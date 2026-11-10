@@ -44,6 +44,21 @@ EVENTS = {
                  'Lightest: a 23-Sun black hole eating a 2.6-Sun mystery object. Long, rising chirp.'),
 }
 
+# What each spectrogram shows, written after looking at the plots.
+RESULTS = {
+    'GW190521': 'These black holes are so big that they touch while still orbiting slowly. '
+                'The signal ends below 100 Hz and is over almost instantly, so the prediction '
+                'line is very short too.',
+    'GW150914': 'The signal sweeps from about 35 Hz to about 300 Hz in the last tenth of a second. '
+                'The dashed prediction follows the shape of the real chirp, sitting a few '
+                'hundredths of a second early because GWOSC rounds merger times to 0.1 s.',
+    'GW190814': 'The chirp is visible for the whole second, rising from about 45 Hz to about '
+                '150 Hz. The prediction runs a little above the data: the simple formula is least '
+                'accurate for very unequal masses like 23 and 2.6 Suns.',
+}
+
+AUTHOR = ''                                # put your name here, e.g. AUTHOR = 'Your Name'
+
 DATA_DIR = 'data'                          # downloads are cached here (git-ignored)
 PLOT_DIR = 'plots'                         # every figure goes here
 OUT_DIR = 'project19'                      # WAV files and the HTML gallery go here
@@ -227,24 +242,35 @@ def embed(path, mime):
 
 
 def make_html(cards, comparison_png):
-    card_html = ''
+    """Build the full project report: one page with the write-up, plots and sounds."""
+    # One row per event for the data table.
+    data_rows = ''
     for c in cards:
         e = c['event']
+        data_rows += f"""
+    <tr><td>{c['name']}</td><td>{e['catalog.shortName'].replace('-confident', '')}</td>
+        <td>{e['mass_1_source']:.1f} + {e['mass_2_source']:.1f}</td>
+        <td>{e['mass_1_source'] + e['mass_2_source']:.0f}</td>
+        <td>~{e['luminosity_distance'] * 3.26e-3:.1f}</td>
+        <td>20{c['name'][2:4]}-{c['name'][4:6]}-{c['name'][6:8]}</td></tr>"""
+
+    # One card per event: what it shows, its spectrogram and its two sounds.
+    card_html = ''
+    for c in cards:
         card_html += f"""
   <section class="card">
-    <h2>{c['name']}</h2>
+    <h3>{c['name']}</h3>
     <p class="blurb">{c['blurb']}</p>
-    <table>
-      <tr><td>Masses</td><td>{e['mass_1_source']:.1f} + {e['mass_2_source']:.1f} Suns</td></tr>
-      <tr><td>Distance*</td><td>~{e['luminosity_distance'] * 3.26e-3:.1f} billion light-years</td></tr>
-      <tr><td>Date (UTC)</td><td>20{c['name'][2:4]}-{c['name'][4:6]}-{c['name'][6:8]}</td></tr>
-    </table>
+    <p>{RESULTS[c['name']]}</p>
     <img src="{embed(c['png'], 'image/png')}" alt="Spectrogram of {c['name']}">
-    <p><b>Real speed:</b><br><audio controls src="{embed(c['wav'], 'audio/wav')}"></audio></p>
-    <p><b>4&times; faster (two octaves higher, easier on laptop speakers):</b><br>
-       <audio controls src="{embed(c['wav_fast'], 'audio/wav')}"></audio></p>
+    <div class="players">
+      <p><b>Real speed</b><br><audio controls src="{embed(c['wav'], 'audio/wav')}"></audio></p>
+      <p><b>4&times; faster</b> (two octaves higher, easier on laptop speakers)<br>
+         <audio controls src="{embed(c['wav_fast'], 'audio/wav')}"></audio></p>
+    </div>
   </section>"""
 
+    byline = f'{AUTHOR} &middot; ' if AUTHOR else ''
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -253,60 +279,115 @@ def make_html(cards, comparison_png):
 <title>Hear a black hole merger: LIGO audio gallery</title>
 <style>
   body {{ font-family: system-ui, sans-serif; max-width: 960px; margin: 2em auto; padding: 0 1em;
-         line-height: 1.5; color: #222; }}
-  h1 {{ margin-bottom: 0.2em; }}
-  .card {{ border: 1px solid #ddd; border-radius: 10px; padding: 1em 1.5em; margin: 1.5em 0; }}
+         line-height: 1.55; color: #222; }}
+  h1 {{ margin-bottom: 0.1em; }}
+  h2 {{ margin-top: 2em; border-bottom: 1px solid #ddd; padding-bottom: 0.2em; }}
+  .byline {{ color: #666; margin-top: 0; }}
+  .answer {{ background: #f4f6fb; border-radius: 10px; padding: 0.8em 1.2em; }}
+  .card {{ border: 1px solid #ddd; border-radius: 10px; padding: 0.5em 1.5em 1em; margin: 1.5em 0; }}
   .blurb {{ font-style: italic; }}
+  .players {{ display: flex; flex-wrap: wrap; gap: 0 2em; }}
+  .players p {{ flex: 1 1 320px; }}
   img {{ max-width: 100%; }}
-  audio {{ width: 100%; max-width: 420px; }}
-  table td {{ padding: 0 1em 0 0; }}
-  .note {{ background: #f4f6fb; border-radius: 10px; padding: 0.8em 1.2em; }}
-  footer {{ font-size: 0.9em; color: #555; margin-top: 3em; }}
+  audio {{ width: 100%; max-width: 380px; }}
+  table.data {{ border-collapse: collapse; margin: 1em 0; }}
+  table.data th, table.data td {{ border-bottom: 1px solid #ddd; padding: 0.3em 1em 0.3em 0; text-align: left; }}
+  .formula {{ font-family: Georgia, serif; font-size: 1.1em; text-align: center; margin: 1em 0; }}
+  .small {{ font-size: 0.9em; color: #555; }}
 </style>
 </head>
 <body>
 <h1>Hear a black hole merger</h1>
-<p>Real data from the LIGO Livingston detector, turned into sound. Use headphones if you can:
-the chirps are deep, and laptop speakers struggle below about 100&nbsp;Hz.</p>
+<p class="byline">{byline}CS85 Project 19 &middot; Data: LIGO, via the Gravitational Wave Open Science Center</p>
 
-<div class="note">
-<h3>Why does the pitch rise?</h3>
-<p>Two black holes orbiting each other send out gravitational waves, ripples in space itself.
-The waves go up and down <b>twice per orbit</b>, so their pitch is twice the orbit rate.
-The waves carry energy away, so the black holes sink closer together. Closer orbits are
-faster orbits (just as Mercury goes around the Sun faster than Earth), so the pitch goes up.
-Faster orbits lose energy even faster, so it runs away: the pitch sweeps upward more and more
-quickly until the two black holes touch and merge. That rising "whoop" is called a <b>chirp</b>.</p>
-<p><b>Mass sets the sound.</b> Heavy black holes are big, so they touch while still orbiting
-fairly slowly: the chirp ends at a low pitch and is over almost instantly (GW190521).
-Light ones can get much closer before touching, so they orbit faster and spend longer
-in LIGO's hearing range: a longer chirp that climbs higher (GW190814).</p>
-<p>The white dashed line on each picture is the textbook prediction, worked out from Einstein's
-equations in their simplest form, using the masses LIGO measured. It's not fitted to the
-picture, yet it follows the bright track. It's not perfect: it is the simplest version of the
-formula (it's least accurate for very unequal masses, like GW190814), it fails in the last instant
-when the two objects touch, and GWOSC's merger times are rounded to 0.1&nbsp;s, so the curve can sit
-a few hundredths of a second off.</p>
-<p><i>What you hear is mostly noise:</i> the data were "whitened" (noise at every pitch made
-equally loud) and filtered to 25&ndash;400&nbsp;Hz. Listen for the short upward "whoop" about
-two seconds in, over the hiss. For GW190521 it's only a low thump.</p>
+<h2>Question and answer</h2>
+<p><b>Question:</b> What did the first black-hole collision ever detected (GW150914, September 14, 2015)
+actually "sound" like in LIGO's detectors?</p>
+<div class="answer">
+<p><b>Answer:</b> A quick upward "whoop". In the last tenth of a second the signal sweeps from about
+35&nbsp;Hz to about 300&nbsp;Hz, then stops as the two black holes become one. Comparing three mergers
+shows that mass sets the sound: heavier pairs make a shorter, deeper chirp; lighter pairs chirp longer
+and climb higher.</p>
 </div>
+<p>Listen below. Use headphones if you can: the chirps are deep, and laptop speakers struggle below
+about 100&nbsp;Hz.</p>
 
-<h2>All three side by side</h2>
+<h2>Why the pitch rises</h2>
+<p>Losing energy makes the orbit faster, and a faster orbit loses energy even faster.</p>
+<ol>
+  <li>Two orbiting black holes send out gravitational waves, ripples in space itself.</li>
+  <li>The waves go up and down twice per orbit, so their pitch is twice the orbit rate.</li>
+  <li>The waves carry energy away, so the black holes sink closer together.</li>
+  <li>Closer orbits are faster orbits (Mercury circles the Sun faster than Earth does), so the pitch goes up.</li>
+  <li>Faster orbits lose energy faster, so steps 3 and 4 run away until the black holes touch and merge.
+      That rising "whoop" is called a <b>chirp</b>.</li>
+</ol>
+<p><b>Mass sets the sound.</b> Heavy black holes are big, so they touch while still orbiting slowly:
+a short, low chirp. Light ones get much closer before touching, so they orbit faster and spend longer
+in LIGO's hearing range: a longer chirp that climbs higher.</p>
+
+<h2>Results</h2>
+<p>On the same axes, the 156-Sun pair is a short blob below 100&nbsp;Hz, the 66-Sun pair sweeps up to
+about 300&nbsp;Hz in 0.1&nbsp;s, and the 26-Sun pair rises for the whole second shown.</p>
 <img src="{embed(comparison_png, 'image/png')}" alt="Three spectrograms side by side">
+<p>Each picture below is a spectrogram: time runs left to right, pitch runs up, and brighter means
+louder. The white dashed line is the textbook prediction from the masses LIGO measured; it is
+<i>not</i> fitted to the picture. In each sound file the merger is 2 seconds in. The sound is mostly
+hiss, with the chirp a short "whoop" on top; for GW190521 it is only a low thump.</p>
 {card_html}
 
-<footer>
-<p><b>Data:</b> Gravitational Wave Open Science Center (GWOSC), <a href="https://gwosc.org">gwosc.org</a>:
-32&nbsp;s of LIGO Livingston strain data around each event, with masses, distances and merger times
-from the GWOSC event catalog (GWTC-1 and GWTC-2.1).
-*Distances are "luminosity distances", worked out from how faint the signal is. For far-away
-events this is larger than the distance the waves actually travelled, because the Universe
-expanded while they were on their way. This research has made use of data or software
-obtained from GWOSC, a service of the LIGO Scientific Collaboration, the Virgo Collaboration,
-and KAGRA.</p>
-<p>Made with gwpy, matplotlib and scipy for CS85. Code: <code>project19/make_gallery.py</code>.</p>
-</footer>
+<h2>Data</h2>
+<p>All data come from the <a href="https://gwosc.org">Gravitational Wave Open Science Center (GWOSC)</a>:
+32 seconds of LIGO Livingston strain data around each event (about 1&nbsp;MB each, 4096 samples per
+second), plus masses, distances and merger times from GWOSC's event catalogs. The three events were
+picked to span a wide range of masses.</p>
+<table class="data">
+  <tr><th>Event</th><th>Catalog</th><th>Masses (Suns)</th><th>Total (Suns)</th>
+      <th>Distance* (billion light-years)</th><th>Date (UTC)</th></tr>{data_rows}
+</table>
+<p class="small">*Luminosity distance, worked out from how faint the signal is. For far-away events it
+is larger than the distance the waves travelled, because the Universe expanded on the way.</p>
+
+<h2>Method</h2>
+<p>One Python script, <code>project19/make_gallery.py</code>, does every step in about 15 seconds.</p>
+<ol>
+  <li><b>Download:</b> ask GWOSC's event API for each event's details and data file, and cache them.</li>
+  <li><b>Spectrogram:</b> gwpy's Q-transform makes a whitened picture of pitch versus time, from
+      1&nbsp;s before to 0.1&nbsp;s after the merger.</li>
+  <li><b>Prediction:</b> draw the textbook chirp on top, from LIGO's measured chirp mass M<sub>c</sub>.
+      The simplest (leading-order) form of Einstein's equations gives the frequency a time &tau; before
+      merger:
+      <div class="formula">f = (1/&pi;) &middot; (5 / 256&tau;)<sup>3/8</sup> &middot;
+      (G&thinsp;M<sub>c</sub> / c<sup>3</sup>)<sup>&minus;5/8</sup></div>
+      LIGO measures the redshifted chirp mass, so the script uses the source chirp mass &times; (1 + redshift).</li>
+  <li><b>Sound:</b> LIGO records 4096 samples per second, which is already an audio format. Whiten the
+      data (make the noise equally loud at every pitch), keep 25&ndash;400&nbsp;Hz, and save 3&nbsp;s
+      around the merger as a WAV file, plus a copy played 4&times; faster.</li>
+</ol>
+
+<h2>Limitations</h2>
+<ul>
+  <li>GWOSC rounds merger times to 0.1&nbsp;s, so "0" on the time axis is approximate and the prediction
+      can sit a few hundredths of a second off.</li>
+  <li>The prediction is the simplest version of the formula. It fails in the last instant, when the two
+      objects touch, and is least accurate for very unequal masses (GW190814).</li>
+  <li>Only one detector (LIGO Livingston) is used, and the sounds are dominated by detector noise.</li>
+</ul>
+
+<h2>Next steps</h2>
+<ul>
+  <li>Stretch goal: add GW250114, the loudest event so far (download about 100&nbsp;MB).</li>
+  <li>Add LIGO Hanford's data, to show the same chirp arriving at two detectors a few milliseconds apart.</li>
+</ul>
+
+<h2>Sources</h2>
+<p class="small">Data: Gravitational Wave Open Science Center, <a href="https://gwosc.org">gwosc.org</a>;
+event parameters from the GWTC-1 and GWTC-2.1 catalogs via the
+<a href="https://gwosc.org/eventapi/">GWOSC event API</a>. "This research has made use of data or
+software obtained from the Gravitational Wave Open Science Center (gwosc.org), a service of the LIGO
+Scientific Collaboration, the Virgo Collaboration, and KAGRA."<br>
+Software: gwpy, matplotlib, numpy, scipy, requests. Code:
+<a href="https://github.com/ryannoor41/cs85-astro/blob/claude/funny-gauss-6k7ayb/project19/make_gallery.py">project19/make_gallery.py</a>.</p>
 </body>
 </html>
 """
