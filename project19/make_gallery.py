@@ -57,7 +57,7 @@ RESULTS = {
                 'accurate for very unequal masses like 23 and 2.6 Suns.',
 }
 
-AUTHOR = ''                                # put your name here, e.g. AUTHOR = 'Your Name'
+AUTHOR = 'Ryan Noorbakhsh'
 
 DATA_DIR = 'data'                          # downloads are cached here (git-ignored)
 PLOT_DIR = 'plots'                         # every figure goes here
